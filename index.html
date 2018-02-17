@@ -1,0 +1,468 @@
+<HTML>
+<HEAD>
+<TITLE>Projet Indexation Multim&eacute;dia</TITLE>
+<!-- Changed by: Georges Qu&eacute;not,  21-Janvier-2013 -->
+</HEAD>
+<BODY>
+<H1>GINF53C4 - Projet Indexation Multim&eacute;dia<BR>
+R&eacute;alisation d'un syst&egrave;me d'indexation d'images fixes</H1>
+
+<b>Note :</b> ce sujet et les données associées (à l'exception des images) sont
+accessibles en local sur le serveur de l'UFR&nbsp;:
+<UL>
+<LI>par le web : <A HREF="http://goedel.e.ujf-grenoble.fr/~quenotg/GINF53C4/PROJET">http://goedel.e.ujf-grenoble.fr/~quenotg/GINF53C4/PROJET</A>
+<LI>par le système de fichier : /u/q/quenotg/GINF53C4/PROJET
+</UL>
+
+<H2>1. But</H2>
+
+<P>R&eacute;aliser un syst&egrave;me qui permet d'attribuer des
+&eacute;tiquettes s&eacute;mantiques &agrave; des images en fonction de leur
+contenu &agrave; partir d'une collection d'entra&icirc;nement contenant des
+images annot&eacute;es. &Eacute;valuer ce syst&egrave;me en utilisant une
+collection de validation contenant d'autres images annot&eacute;es.
+Le syst&egrave;me utilisera plusieurs descripteurs de contenu, un
+classificateur (SVM) et une m&eacute;thode de fusion. Le syst&egrave;me
+devra donner un score de probabilit&eacute; de pr&eacute;sence pour chaque
+concept dans chaque image. Pour chaque concept, il devra afficher la liste
+ordonn&eacute;e des images de
+la collection de test ayant la plus grande probabilit&eacute; de contenir le
+concept (top N avec mesure de la pr&eacute;cision &agrave; N). La mesure de
+performance globale est la MAP. Plusieurs combinaisons seront compar&eacute;es.
+
+<H2>2. Donn&eacute;es fournies</H2>
+
+<P>Les images et les annotations que que allez utiliser sont issues du projet
+<A HREF="http://pascallin.ecs.soton.ac.uk/challenges/VOC/voc2010/index.html">VOC 2010</A>
+sur la classification automatique d'images (pour information, vous n'avez pas
+besoin d'&eacute;tudier ce site).</P>
+
+<P>Les donn&eacute;es sont d&eacute;compos&eacute;es en deux parties :
+entra&icirc;nement (<A HREF="train">train</A>, 4998 images) et validation
+(<A HREF="val">val</A>, 5105 images). Les r&eacute;pertoires <tt>train</tt>
+et <tt>val</tt> contiennent:
+<UL>
+<LI>Une liste d'images&nbsp;: <tt>list.txt</tt>&nbsp;;
+<LI>Une liste correspondante d'URLs permettant de les visualiser dans une
+page web&nbsp;: <tt>urls.txt</tt>&nbsp;;
+<LI>Un sous-r&eacute;pertoire contenant des annotations&nbsp;: <tt>ann</tt>
+avec un fichier <tt>concept.ann</tt> par concept annot&eacute;&nbsp;; une
+ligne dans ce fichier contient le nom de l'image et une valeur enti&egrave;re
+qui vaut +1 si le concept est pr&eacute;sent, &minus;1 si le concept est absent et
+0 en a cas d'ambigu&iuml;t&eacute ou si le concept n'a pas &eacute;t&eacute;
+annot&eacute;&nbsp;;
+</UL>
+La liste des 20 concepts annot&eacute;s se trouve dans le fichier
+<A HREF="concepts.txt">concepts.txt</A>.</P>
+
+<H2>3. Programmes fournis</H2>
+
+Nous vous fournisson un module pour charger en m&eacute;moire des images au
+format JPEG&nbsp;:
+<A HREF="rdjpeg.h">rdjpeg.h</A>/<A HREF="rdjpeg.c">rdjpeg.c</A> et un programme
+exemple qui charge une image en m&eacute;moire et affiche les plans rouge, vert et
+bleu du premier bloc 8&times;8 ce cette image&nbsp;:
+<A HREF="read_image.c">read_image.c</A>. Il se compile avec&nbsp;:
+<PRE>
+cc rdjpeg.c read_image.c -o read_image
+</PRE>
+<p> Un executable Linux <A HREF="djpeg">djpeg</A> est fourni pour le cas où il
+ne serait pas disponible sur votre syst&egrave;me.
+
+<H2>4. Impl&eacute;mentation</H2>
+
+Le d&eacute;veloppement suivra les &eacute;tapes suivantes (environ une par s&eacute;ance).
+
+<H3>4.1. Calcul d'un histogramme de couleur</H3>
+
+&Eacute;crire une proc&eacute;dure pour calculer un histogramme tridimmensionnel dans l'espace RGB sur une image. La proc&eacute;dure doit avoir un nombre de "bins" param&eacute;trable (<tt>#define</tt>) pour chaque composante (R, G ou B). En pratique, on consid&egrave;rera un histogramme 4&times;4&times;4.
+
+<P>Pour v&eacute;rification, l'histogramme RGB 4&times;4&times;4 de l'image
+<A HREF="http://mrim.imag.fr/voc10/images/2008_000015.jpg">
+http://mrim.imag.fr/voc10/images/2008_000015.jpg</A> est&nbsp;:
+<PRE>
+  0.452789  0.045333  0.039810  0.000000
+  0.011272  0.014196  0.012398  0.000037
+  0.000000  0.000000  0.000031  0.000000
+  0.000000  0.000000  0.000000  0.000000
+
+  0.025755  0.004826  0.000917  0.000000
+  0.018153  0.118135  0.017584  0.003156
+  0.000000  0.001872  0.002043  0.000312
+  0.000000  0.000000  0.000000  0.000000
+
+  0.000049  0.000000  0.000000  0.000000
+  0.000018  0.007131  0.001205  0.000116
+  0.000000  0.005645  0.145388  0.001853
+  0.000000  0.000000  0.003835  0.000361
+
+  0.000000  0.000000  0.000000  0.000000
+  0.000000  0.000000  0.000000  0.000000
+  0.000000  0.000000  0.006612  0.000147
+  0.000000  0.000000  0.035187  0.023835
+</PRE>
+
+Ce affichage corresponf &agrave; l'ordre h[r][g][b] &nbsp;:
+<PRE>
+  h[0][0][0]  h[1][0][0]  h[2][0][0]  h[3][0][0]
+  h[0][1][0]  h[1][1][0]  h[2][1][0]  h[3][1][0]
+  h[0][2][0]  h[1][2][0]  h[2][2][0]  h[3][2][0]
+  h[0][3][0]  h[1][3][0]  h[2][3][0]  h[3][3][0]
+
+  h[0][0][1]  h[1][0][1]  h[2][0][1]  h[3][0][1]
+  h[0][1][1]  h[1][1][1]  h[2][1][1]  h[3][1][1]
+  h[0][2][1]  h[1][2][1]  h[2][2][1]  h[3][2][1]
+  h[0][3][1]  h[1][3][1]  h[2][3][1]  h[3][3][1]
+
+  h[0][0][2]  h[1][0][2]  h[2][0][2]  h[3][0][2]
+  h[0][1][2]  h[1][1][2]  h[2][1][2]  h[3][1][2]
+  h[0][2][2]  h[1][2][2]  h[2][2][2]  h[3][2][2]
+  h[0][3][2]  h[1][3][2]  h[2][3][2]  h[3][3][2]
+
+  h[0][0][3]  h[1][0][3]  h[2][0][3]  h[3][0][3]
+  h[0][1][3]  h[1][1][3]  h[2][1][3]  h[3][1][3]
+  h[0][2][3]  h[1][2][3]  h[2][2][3]  h[3][2][3]
+  h[0][3][3]  h[1][3][3]  h[2][3][3]  h[3][3][3]
+</PRE>
+
+Le r&eacute;sultat doit ensuite &ecirc;tre stock&eacute; au format <tt>libsvm</tt>.
+C'est un format dans lequel une &eacute;tiquette et un vecteur sont repr&eacute;sent&eacute;
+sur une ligne avec un codage optimis&eacute; pour
+les vecteurs creux. La repr&eacute;sentation est de la forme
+&lt;&eacute;tiquette&gt; (&lt;num&eacute;ro de composante&gt;:&lt;valeur de la
+composante&gt;)*. Seules les composantes non nulles sont mentionn&eacute;es.
+La num&eacute;rotation des composantes commence &agrave; 1. On met 0 dans le champ
+&lt;&eacute;tiquette&gt;. Pour la m&ecirc;me image que ci dessus, &ccedil;a donne (une seule ligne) &nbsp;:
+<PRE>
+0 1:0.452789 2:0.045333 3:0.039810 5:0.011272 6:0.014196 7:0.012398 8:0.000037 11:0.000031 17:0.025755 18:0.004826 19:0.000917 21:0.018153 22:0.118135 23:0.017584 24:0.003156 26:0.001872 27:0.002043 28:0.000312 33:0.000049 37:0.000018 38:0.007131 39:0.001205 40:0.000116 42:0.005645 43:0.145388 44:0.001853 47:0.003835 48:0.000361 59:0.006612 60:0.000147 63:0.035187 64:0.023835
+</PRE>
+
+Quand la m&eacute;thode est valid&eacute;e pour une image, il faut lancer
+le calcul sur toutes les images des collections d'entra&icirc;nement et de
+validation. On produit un fichier par collection avec une ligne de vecteur
+par ligne dans le fichier urls.txt. La correspondance se fait par l'ordre
+qui doit &ecirc;tre le m&ecirc;me. Valider la proc&eacute;dure avec une
+cinquantaine d'images et ensuite lancer une fois le calcul sur chaque
+collection compl&egrave;te.
+
+<p><B>Attention :</B> si vous traitez toutes les images dans un m&ecirc;me programme,
+il faut lib&eacute;rer les tableaux allou&eacute;s par <tt>read_cimage()</tt>
+&agrave; chaque lecture en utilisant la fonction <tt>free_cimage()</tt> sinon
+la taille de votre programme en m&eacute;moire va exploser et il pourrait
+&eacute;chouer à cause de cela (actualiser
+<A HREF="rdjpeg.h">rdjpeg.h</A>/<A HREF="rdjpeg.c">rdjpeg.c</A> si n&eacute;cessaire).
+
+
+<H3>4.2. Classification &agrave; partir d'histogrammes de couleurs avec libsvm</H3>
+
+Vous ferez la classification par machines &agrave; vecteurs de supports (SVM) avec le logiciel
+<A HREF="http://www.csie.ntu.edu.tw/~cjlin/libsvm/"><tt>libsvm</tt></A>. Le site contient une
+documentation et une distribution. Une version compil&eacute;e pour linux 32-bits est
+install&eacute;e dans <tt>/u/q/quenotg/local/linux/bin</tt>. Vous pouvez aussi installer
+la distribution sur votre propre machine. Vous utiliserez la version C-SVC avec noyau RBF gaussien.
+
+<p>La mise en &oelig;uvre devra suivre les &eacute;tapes suivantes&nbsp;:
+<UL>
+<LI>Fusion du fichier de vecteurs histogrammes et d'un fichier d'annotation pour la
+cr&eacute;ation d'un fichier d'entra&icirc;nement (collection <tt>train</tt>).
+Les &laquo;&nbsp;0&nbsp;&raquo; en t&ecirc;te de chaque ligne du fichier <tt>color.svm</tt>
+doivent &ecirc;tre remplac&eacute;s par les classes (-1 ou +1) prises dans le fichier
+<tt>ann/&lt;concept&gt;.ann</tt> pour cr&eacute;er un fichier <tt>svm/color_&lt;concept&gt;.svm</tt>.
+<LI>Cr&eacute;ation d'un mod&egrave;le avec <tt>svm-train</tt>. Commande&nbsp;:<br>
+<tt>svm-train [options] train/svm/color_aeroplane.svm model/color_aeroplane.model</tt>
+<!--LI>Fusion du fichier de vecteurs histogrammes et d'un fichier d'annotation pour la
+cr&eacute;ation d'un fichier de pr&eacute;diction et de v&eacute;rification
+(collection <tt>val</tt>).-->
+<LI>Ex&eacute;cution de la pr&eacute;diction et de v&eacute;rification avec <tt>svm-predict</tt>.
+Commande&nbsp;:<br>
+<tt>svm-predict [options] val/svm/color.svm model/color_aeroplane.model out/color_aeroplane.out</tt>
+</UL>
+
+<p>Ceci est &agrave; faire pour chacun des 20 concepts cibles. On mettra la m&eacute;thode au
+point avec une seul concept (<i>areoplane</i>) et on l'appliquera aux autres ensuite.
+
+<p>Comme les concepts cibles sont peu fr&eacute;quents, la meilleure pr&eacute;diction pour
+libsvm est de toujours attribuer la classe n&eacute;gative. Pour &eacute;viter cela, il faut
+mettre des poids &eacute;lev&eacute;s (19) pour la classe positive (option <tt>-w+1 19</tt>).
+Attention: 19 n'est pas forc&eacute;ment la valeur optimale. En th&eacute;orie, la valeur
+optimale est le rapport entre le nombre d'&eacute;chantillons annot&eacute;s comme
+n&eacute;gatifs et le nombre d'&eacute;chantillons annot&eacute;s comme positifs. En
+pratique, la valeur optimale peut &ecirc;tre diff&eacute;rente mais ce rapport est en
+g&eacute;n&eacute;ral une bonne solution. Cette option doit &ecirc;tre utilis&eacute;e
+seulement dans <tt>svm-train</tt>.
+
+<p>Une mesure de performance diff&eacute;rente doit aussi &ecirc;tre choisie (cela sera fait
+dans la s&eacute;ance suivante), elle prendra en compte un ordre parmi les images
+retourn&eacute;es. Afin aussi de pouvoir trier les images de validation de la plus probable
+&agrave; la moins probable, il faudra utiliser la version
+&laquo;&nbsp;probabilis&eacute;e&nbsp;&raquo; (option <tt>-b 1</tt>). Cette option doit
+&ecirc;tre utilis&eacute;e dans <tt>svm-train</tt> ET dans <tt>svm-predict</tt>.
+
+<p>Vous pouvez essayer diff&eacute;rentes combinaisons de paramètres pour am&eacute;liorer la performance
+de classification. En particulier, il vaut mieux mettre le paramètre gamma avec une valeur
+de 1 (option <tt>-g 1.0</tt>).
+
+<PRE>
+S&eacute;ance 2:
+programme pour g&eacute;n&eacute;rer un fichier de vecteurs .svm "neutre" :
+- urls.txt -> color.svm (train et val)
+programme pour g&eacute;n&eacute;rer un fichier de vecteurs .svm avec annotations :
+- color.svm, aeroplane.ann (train seulement)
+doivent &ecirc;tre pr&ecirc;ts pour la s&eacute;ance suivante :
+- color.svm (train)
+- color.svm (val)
+- color_aeroplane.svm (train)
+
+S&eacute;ance 3 :
+application de svm-train :
+- color_aeroplane.svm -> color_aeroplane.model (train seulement)
+application de svm-predict :
+- color.svm(val), color_aeroplane.model (train) -> color_aeroplane.out (val)
+application aux autres concepts (faire des scripts)
+
+S&eacute;ance 4 :
+programme pour mise au format trec_eval :
+- color_aeroplane.out -> color_aeroplane.top
+&eacute;valuation avec trec_eval :
+- aeroplane.rel, color_aeroplane.top -> AP(color_aeroplane) (performance sur color_aeroplane)
+&eacute;valuation de tous :
+- all.rel, color_all.top -> MAP (performance color globale)
+
+S&eacute;ance 5:
+g&eacute;n&eacute;ration des histogrammes de SIFT :
+- programme cr&eacute;er le fichier d'&eacute;chantillons SIFT pour le clustering ;
+- lancement du programme de clustering via la commande R ;
+- g&eacute;n&eacute;ration des histogrammes de SIFT pour l'apprentissage par svm.
+
+S&eacute;ance 6 :
+apprentissage par svm des concepts (similaire à la s&eacute;ance 4) : commencer par aeroplane.
+
+
+
+</PRE>
+
+<H3>4.3. &Eacute;valuation (MAP et P@N avec trec_eval)</H3>
+
+Vous ferez l'&eacute;valuation selon la m&eacute;trique MAP (Mean Average Precision)
+avec le logiciel 
+<A HREF="http://trec.nist.gov/trec_eval/trec_eval_latest.tar.gz"><tt>trec_eval</tt></A>.
+L'archive contient une distribution. Une version compil&eacute;e pour linux 32-bits est
+install&eacute;e dans <tt>/u/q/quenotg/local/linux/bin</tt>. Vous pouvez aussi installer
+la distribution sur votre propre machine.
+
+<PRE>
+Usage: trec_eval [-h] [-q] {-m measure}* trec_rel_file trec_top_file
+   -h: Give full help information, including other options
+   -q: In addition to summary evaluation, give evaluation for each query
+   -m: calculate and print measures indicated by 'measure'
+       ('-m all_qrels' prints all qrels measures, '-m official' is default)
+</PRE>
+
+<tt>trec_eval</tt> compare une r&eacute;f&eacute;rence (<tt>trec_rel_file</tt>, la
+bonne r&eacute;ponse) et une soumission (<tt>trec_top_file</tt>, la pr&eacute;diction
+du syst&egrave;me).
+
+<p>Le programme attend ses entr&eacute;es sous une format
+sp&eacute;cifique malheureusement diff&eacute;rent du format des annorations
+pour la r&eacute;f&eacute;rence et diff&eacute;rent du format de sortie de
+<tt>libsvm</tt> pour les soumissions. La conversion est faite pour les
+annotations et se trouve dans <tt>val/rel</tt> avec un fichier par concept plus
+un fichier pour l'ensemble <tt>color_all.rel</tt>. Il faudra faire vous-m&ecirc;me
+la conversion pour la pr&eacute;diction du syst&egrave;me.
+
+<p>Le format comprend une ligne par image et par concept (il peut y en avoir un seul).
+<tt>trec_top_file</tt> contient une liste ordonn&eacute;e. L'ordre est d&eacute;fini
+par un score qui sert &agrave; trier les images (du plus grand au plus petit score).
+Le format de la ligne est :
+
+<PRE>
+&lt;concept_id&gt; Q0 &lt;image_id&gt; 0 &lt;score&gt; R
+</PRE>
+
+Les champs <tt>"Q0"</tt>, <tt>"0"</tt> et <tt>"R"</tt> ne servent &agrave; rien.
+Ils sont l&agrave; pour des raisons "historiques".
+
+<p>Le score peut &ecirc;tre la probabilit&eacute; produite par <tt>svm-predict</tt>
+avec l'option <tt>-b</tt>.
+
+<p>Pour construire le fichier <tt>.top</tt>, il est plus pratique d'utiliser le
+fichier <tt>histo.svm</tt> dans <tt>svm-predict</tt> et le fichier <tt>list.txt</tt>
+en utilisant la correspondance ligne &agrave; ligne.
+
+<p>Ceci est &agrave; faire pour chacun des 20 concepts cibles. On mettra la m&eacute;thode au
+point avec une seul concept (<i>areoplane</i>) et on l'appliquera aux autres ensuite.
+Attention, l'ordre des classes peut changer dans le fichier de sortie de <tt>libsvm</tt>,
+il faut v&eacute;rifier la ligne <tt>labels</tt> (la premi&egrave;re).
+
+
+<H3>4.4. Calcul de SIFTs locaux (programme ou r&eacute;sultats fournis)</H3>
+
+<p>Il existe des approches qui permettent d'extraire des carcat&eacute;ristiques visuelles, bas&eacute;es sur des informations localis&eacute;es autour d'un point d'une image. Ces approches proposent &eacute;galement des manièeres de d&eacute;terminer autour de quel point travailler et &eacute;galement à quelle distance autour du point effectuer l'extraction de caract&eacute;ristique.</p>
+
+<p> L'approche SIFT (pour Scale Invariant Feature Transform) et une approche qui donne de très bons r&eacute;sultats. Il existe quelques programmes qui r&eacute;alisent cette extraction, comme par exemple <A HREF="http://koen.me/research/colordescriptors/">colorDescriptor</A> de Koen van de Sande (vous pouvez regarder cela en dehors du TP). Comme ce programme est assez lent (quelques secondes par image...). Nous vous proposons d'utiliser les fichiers g&eacute;n&eacute;r&eacute;s par ce programme comme source pour votre travail.</p>
+
+<p> Une difficult&eacute; de ces approches est qu'il n'y a pas un nombre pr&eacute;d&eacute;fini de caract&eacute;ristiques extraites pour chaque image (&agrave; l'inverse de ce qui se passe pour les histogrammes de couleurs vous avez calcul&eacute;s). Il faut alors avoir recours à une &eacute;tape de clustering (point suivant).</p>
+
+<p>Le programme de Koen van de Sande g&eacute;nère une liste de caract&eacute;ristiques à 128 dimensions, selon le format suivant :</p>
+
+<PRE>
+KOEN1
+128
+< entier : nb de caract&eacute;ristiques extraites >
+(< ligne de caract&eacute;ristiques >)*
+</PRE>
+
+avec une ligne de caract&eacute;ristiques telle que :
+<PRE>
+&lt;CIRCLE &lt;entier&gt; &lt;entier&gt; &lt;r&eacute;el&gt; &lt;entier&gt; &lt;r&eacute;el&gt;&gt;;entier (entier)*;
+</PRE> 
+Par exemple :
+
+<PRE>
+&lt;CIRCLE 159 154 1.78381 0 0.000296159&gt;; 0 0 31 20 8 0 0 0 0 2 13 13 2 0 10 10 0 4 22 2 0 7 32 4 0 2 18 3 1 4 12 0 7 0 0 6 16 0 0 3 99 7 0 1 2 1 59 140 22 4 0 0 0 100 140 69 0 0 0 0 0 44 140 11 11 4 0 6 16 0 0 0 140 140 19 0 1 0 6 33 56 114 140 15 1 35 75 22 0 8 140 16 1 15 116 9 0 1 0 4 14 0 0 0 10 62 28 1 1 0 0 0 1 39 140 7 0 0 0 0 8 3 140 7 0 0 5 18;
+</PRE>
+<p>qui veut dire que dans la r&eacute;gion de centre (159,154) une caract&eacute;ristique à &eacute;t&eacute; extraite à une &eacute;chelle 1,78381 avec une orientation de 0 et un degr&eacute; de visibilit&eacute; de 0.000296159.</p>
+
+<p> Afin de pouvoir utiliser ces caract&eacute;ristiques pour le clusterinhg, il faut les mettre en forme, c'est-à-dire &eacute;liminer les infomations autres que les caract&eacute;ristiques elles-m&ecirc;mes. Pour cela, on &eacute;limine les ent&ecirc;tes (les 3 premières lignes d'un fichier g&eacute;n&eacute;r&eacute; par colorDescriptor), on enlève aussi la partie "tag" des lignes de caract&eacute;ristiques, sans oublier d'enlever les ";". TRES IMPORTANT : une ligne ne doit pas se terminer par un espace (le retour charriot doit &ecirc;tre juste après la dernière dimension).</p>
+
+<p>Il vous est donc demand&eacute; de cr&eacute;er, pour chaque fichier sift de l'ensemble <tt>train</tt> fourni en <tt>/u/m/mulhemp/sift/train/</tt>,  les fichiers nettoy&eacute;s en ne gardant qu'une ligne sur 75. Il vous est demand&eacute; d'eviter de g&eacute;n&eacute;rer toutes les lignes pour des raisons de place occup&eacute;e sur disque. De plus, un fichier <tt>liste_train_sift</tt> donnant toute la liste est dans ce m&ecirc;me r&eacute;pertoire <tt>/u/m/mulhemp/sift/train/</tt>.</p>
+
+<p>Ensuite, vous aller concat&eacute;ner tous ces fichiers (rappellons que ces fichiers ne contiennent qu'<STRONG>une ligne de caract&eacute;ristiques toutes les 75</STRONG> par exemple) afin de cr&eacute;er un fichier <PRE>samples.txt</PRE> qui n'a pas trop d'&eacute;chantillons (plus le nombre d'&eacute;chantillons est grand, plus le clustering va n&eacute;cessiter de la m&eacute;moire et plus le traitement sera long, jusqu'à... plusieurs jours, et des dizaines de GB...).</p> C'est ce fichier qui va &ecirc;tre utiliser pour le clustering.
+
+<H3>4.5. Calcul de sacs ds SIFT (clustering et mapping)</H3>
+
+<H4>Clustering</H4>
+
+<p>L'objectif du fichier samples.txt est de g&eacute;n&eacute;rer des regroupements (clusters) on en fixe a priori le nombre. Pour cela, nous allons utiliser le logiciel R</p>
+
+<p>R est un environnement gratuit pour des calculs statistique. Il permet en particulier de r&eacute;aliser du clustering automatique.</p>
+
+<p>Nous vous fournissons ici les instructions R qui permettent de r&eacute;aliser un clustering de type Kmoyennes (Kmeans en anglais). Pour cela, vous devez r&eacute;cup&eacute;rer le code <A HREF="kmeans_clustering.R">kmeans_clustering.R</A>, et de l'utiliser de la manière suivante :<p>
+<PRE>
+R --slave --no-save --no-restore --no-environ --args ./samples.txt 256 ./centers256.txt 10 < kmeans_clustering.R
+</PRE>
+<p>Cet appel indique que l'on utilise R en mode non interactif, avec pour arguments : le fichier samples.txt, le nombre de clusters attendu (ici 256), le fichier qui va stocker les centroïdes des clusters, et enfin le nombre d'it&eacute;rations pour le clustering (ici 10).</p>
+
+<p>Le r&eacute;sultat de cet appel est donc la g&eacute;n&eacute;ration des centroïdes de chaque cluster. Cette &eacute;tape est longue et peut prendre 10 minutes pour s'ex&eacute;cuter, &eacute;vitez donc de le lancer plusieurs fois. Il faut ensuite passer en revue chaque caract&eacute;ristique visuelle extraite pour lui assigner son cluster, c'est l'objectif de l'&eacute;tape suivante : le mapping.</p>
+
+<p>NOTE : R n'est pas install&eacute; sur toutes les machines de l'ufr. Il est install&eacute; sur mandelbrot, vous devez donc vous connecter sur mandelbrot pour l'utiliser..</p>
+<H4>Mapping</H4>
+
+<p>Le mapping consiste à d&eacute;terminer, pour chaque caract&eacute;ristique visuelle extraite, le cluster qui lui correspond (dont le centroide est le plus proche.</p>
+
+<p>Pour cela, nous allons encore faire appel à R, avec le code qui vous est fourni en <A HREF="1nn.R">1nn.R</A>. Le nom 1nn vient du fait que l'on trouve, pour une caract&eacute;ristique le plus proche voisin, c'est-à-dire le "One Nearest Neighbour" (1nn). Ce code appelle R et lui demande, pour chaque &eacute;l&eacute;ment d'une liste de caract&eacute;ristriques, de renvoyer l'identifiant du cluster auquel il est rattach&eacute;. NOTE : le num&eacute;ro de cluster commence à 1.</p>
+
+<p>Un utilisation type de ce code est :</p>
+<PRE>
+R --slave --no-save --no-restore --no-environ --args centers256.txt 256 all_for_R_demo_30 res1nn.txt < 1nn.R
+</PRE>
+<p>qui indique que R attend le fichier de centroïdes (g&eacute;n&eacute;r&eacute; pr&eacute;c&eacute;demment), qu'il travaille sur 256 dimensions (clusters), qu'il doit s'appliquer sur un fichier appel&eacute; ici all_for_R_demo_30 et mettre de r&eacute;sultat dans le fichier res1nn.txt.
+Bien entendu, les noms de fichiers sont indicatifs.</p>
+
+<p>Pour un fichier de caract&eacute;ristiques compos&eacute; de 3 lignes:</p>
+<PRE>
+0 0 1 0 0 0 0 0 0 0 0 1 13 1 0 0 1 0 0 0 41 8 3 4 6 8 1 6 74 1 0 0 1 28 29 12 2 3 2 0 8 9 48 34 40 14 4 4 8 2 2 3 172 94 74 19 65 29 4 16 172 109 9 14 0 9 11 8 7 35 31 2 26 11 23 16 11 32 41 49 23 3 2 9 169 64 18 30 38 0 0 1 172 172 132 73 1 14 33 9 2 6 9 2 6 13 49 17 0 5 13 11 9 10 15 13 33 24 7 7 0 0 5 7 27 77 107 20
+2 0 0 0 2 0 0 2 14 3 1 0 0 0 3 26 14 17 29 28 10 0 0 4 0 0 3 20 17 0 0 0 57 1 0 4 5 0 0 21 119 18 10 6 20 43 40 119 21 35 119 119 96 65 12 13 0 0 23 83 35 2 0 0 70 21 0 1 14 15 4 3 119 119 106 21 32 30 11 27 16 38 62 43 119 119 39 6 1 0 1 3 8 108 23 1 6 9 1 4 36 23 5 0 14 59 70 2 0 1 1 0 119 119 41 11 6 41 25 12 25 20 17 52 83 119 26 9
+9 22 23 10 0 0 0 0 21 23 24 20 2 0 0 0 5 7 12 46 28 1 1 0 0 0 0 2 10 4 9 16 60 61 99 87 27 0 0 10 115 115 115 115 9 0 0 6 58 43 92 115 52 8 29 21 17 9 2 30 45 36 84 83 44 27 14 81 38 1 1 7 85 51 31 81 26 0 0 11 73 115 31 71 17 0 3 8 28 111 25 56 78 25 10 7 2 1 0 6 12 6 115 90 0 3 22 34 20 3 19 71 0 8 43 17 14 1 0 78 0 12 51 32 43 12 3 49 0
+</PRE>
+
+<p>Le r&eacute;sultat g&eacute;n&eacute;r&eacute; est de la forme :</p>
+<PRE>
+189
+101
+146
+</PRE>
+<p>Qui indique que la première caract&eacute;ristique est assign&eacute;e au cluster num&eacute;ro 189, la seconde au cluster 101 et la troisième au cluster 146.</p>
+
+<p>Vous devez donc, à partir du fichier de carat&eacute;ristiques de chaque image de <tt>train</tt>, g&eacute;n&eacute;rer le fichier de mapping et le stocker.</p>
+
+<p>Pour simplifier votre problème, nous vous fournissons le code (shell script) qui permet de g&eacute;nerer les fichiers de mapping en <A HREF="http://mrim.imag.fr/GINF53C4/PROJET/process_1nn_sift.sh">http://mrim.imag.fr/GINF53C4/PROJET/process_1nn_sift.sh</A>. Ce code suppose que :</p> 
+<UL>
+<LI> vous avez dans le r&eacute;pertoire le fichier 1nn.R,
+<LI> que vous avez une hi&eacute;rarchie <tt>sift/train/1nn</tt> à partir du r&eacute;pertoire courant,<LI>  et que le fichier de centroides s'appelle <tt>centers256.txt</tt> . 
+</UL>
+<p>Vous pouvez changer cela en &eacute;ditant ce fichier.
+Vous devez faire la m&ecirc;me chose pour les fichiers dans les r&eacute;pertoires <tt>val</tt>.
+<BR>
+<STRONG> ATTENTION : pour les fichiers val il NE FAUT PAS relancer kmeans_clustering.R ; mais vous r&eacute;utilisez le fichier centers256.txt g&eacute;n&eacute;r&eacute; sur le train pour appliquer le 1nn.R sur les fichiers de val.</STRONG></p>
+
+<H3>4.6. Classification &agrave; partir de sacs de SIFT et &eacute;valuation</H3>
+
+<p>A partir des fichiers de mapping, vous allez pouvoir cr&eacute;er un fichier d'histogrammes en comptant combien de fois chaque cluster apparait dans une image <STRONG> et en normalisant ce vecteur (s'il y a 50 SIFTS pour une image et qu'il y a 2 SIFTS dans le cluster 1, alors la valeur de cette dimension dans le vecteur sera égale à 2/50 = 0.04)</STRONG>. Cela va ensuite vous permettre de relancer le m&ecirc;me genre d'exp&eacute;rimentations qu'à partir du 4.1, mais à base de SIFT. Le mieux est de g&eacute;n&eacute;rer directement les fichiers histogrammes au format <tt>libsvm</tt> comme pour les histogrammmes de couleurs.</p>
+<p>Pour les images de <tt>val</tt>, il faut &eacute;galement cr&eacute;er les fichiers de mapping et le fichier d'histogrammes. On utilise le m&ecirc;me fichier de centroides de clusters que pour l'ensemble <tt>train</tt>. Les caract&eacute;ristiques SIFT extraites sont dans le r&eacute;pertoire <tt>/u/m/mulhemp/sift/val/</tt> qui contien le fichier <tt>liste_val_sift</tt> des fichiers sifts pour l'ensemble de validation.</p>
+<p>Une fois que les fichiers <tt>".svm"</tt> sont cr&eacute;&eacute;s pour les collections <tt>train</tt> et <tt>val</tt>, la m&ecirc;me m&eacute;thode que pour les histogrammmes de couleurs doit etre appliqu&eacute;e pour la production des fichiers <tt>".svm"</tt> d'entra&icirc;nement par concepts, la production de modèles par concepts, la pr&eacute;diction de scores par concepts et l'&eacute;valuation par concepts ou globale.
+
+<H3>4.7. Fusion tardive et &eacute;valuation</H3>
+
+Pour la fusion tardive, il faut construire des scores de classification
+globaux en faisant la moyenne entre les scores de claffisication obtenus
+par les histogrammmes de couleur ou par les histogrammes de SIFTs. Le
+r&eacute;sultat doit &ecirc;tre &eacute;valu&eacute; de la m&ecirc;me façon. Il faut utiliser les scores
+de classification transform&eacute;s en probabilit&eacute;s. Il faut comparer la
+performance obtenue (MAP) pour chacun des descripteurs pris s&eacute;par&eacute;ment
+et celle obtenue par la fusion.
+
+<H3>4.8. Classification d'une image quelconque</H3>
+
+Vous pouvez faire un programme qui prend en entrée
+le chemin dans le système de fichier ou l'URL d'une image quelconque
+et qui fournit les scores de classification (probabilités) pour
+chacun des 20 concepts. Affichage du plus probable au moins probable
+avec la probabilité associée.
+
+<p>Ce programme peut tourner sur le serveur web goedel ou
+en ligne de commande. Il peut prendre en paramètre des otpions
+spécifiant une recherche seulement par la couleur, seulement par
+la texture ou une combinaison des deux. Si vous voulez faire
+une interface web, vous pouvez partir de l'exemple
+<A HREF="http://goedel.e.ujf-grenoble.fr/~quenotg/GINF53C4/PROJET/form_post.html">form_post.html</A>
+appelant le code
+<A HREF="http://mrim.imag.fr/GINF53C4/PROJET/post.c">post.c</A>
+avec le module
+<A HREF="http://mrim.imag.fr/GINF53C4/PROJET/cgiu.h">cgiu.h</A> /
+<A HREF="http://mrim.imag.fr/GINF53C4/PROJET/cgiu.c">cgiu.c</A>
+
+
+<p>Pour le calcul des
+descripteurs SIFT, vous pouvez utiliser le programme
+<A HREF="colorDescriptor">colorDescriptor</a> en appel system().
+colorDescriptor n'a pas d'option pour prendre l'image sur l'entrée
+standard et envoyer le résultat sur la sortie standard. Il faut
+obligatoirement passer par le système de fichiers. La commande est&nbsp;:
+<PRE>
+colorDescriptor --descriptor sift &lt;image&gt;.jpg --output &lt;image&gt;.sift
+</PRE>
+
+
+<H3>4.9. Optionnel (non noté) : test de descripteurs "deep learning"</H3>
+
+Les fichiers <A HREF="http://mrim.imag.fr/GINF53C4/PROJET/train/deep294.svm">train/deep294.svm</A> et
+<A HREF="http://mrim.imag.fr/GINF53C4/PROJET/val/deep294.svm">train/val294.svm</A> contiennent des
+descripteurs à 294 dimensions obtenus par apprentissage profond (deep learning). Ils sont proches
+de l'état de l'art actul en matière de descripteurs visuels. Ils donnent normalement des résultats
+encore meilleurs que les histogrammes de couleur et de SIFT (mais ils sont beaucoup plus complexes
+à calculer). Vous pouvez aussi les tester.
+
+
+<!-- H3>4.9. Fusion pr&eacute;coce et &eacute;valuation</H3>
+
+<H3>4.9. Variantes de fusion tardive</H3>
+<Produit, moyenne pond&eacute;r&eacute;e ou minimum et &eacute;valuation. -->
+<!-- H3>4.1. Variantes de fusion tardive</H3 -->
+<!-- Fusion de rang. -->
+
+
+<H3>5. &Eacute;valuation du projet</H3>
+
+Vous devrez faire un compte rendu et nous fournir les codes sources de
+vos programmes et les diff&eacute;rents scripts que vous utilisez pour les lancer.
+Vous nous enverrez le compte-rendu et les sources (pas les fichiers de donn&eacute;es)
+dans une archive zip ou tgz pour le 11 avril au plus tard
+(<A HREF="mailto:Georges.Quenot@imag.fr">Georges.Quenot@imag.fr</A>,
+<A HREF="mailto:Philippe.Mulhem@imag.fr">Philippe.Mulhem@imag.fr</A>).
+Vous nous montrerez ce qui tourne lors de la s&eacute;ance du 30 mars.
+
+
+<p>&nbsp;
+</BODY>
+</HTML>
