@@ -117,5 +117,6 @@ int main(int argc, char *argv[]){
   }
 
   fclose(f);
+  free_cimage(argv[1],&cim);
   exit(0);
 }
