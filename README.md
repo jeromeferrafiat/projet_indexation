@@ -1,4 +1,9 @@
 # Projet document multimedia
 
-## Comment compiler :
-cc rdjpeg.c read_image.c -o read_image
+## Commande Makefile :
+- *make* : construction du projet
+- *make test* : lance le projet sur une exemple
+- *make clean* : nettoie le projet
+
+
+
