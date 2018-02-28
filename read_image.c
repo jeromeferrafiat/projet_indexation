@@ -49,8 +49,7 @@ char *remove_ext (char* mystr, char dot, char sep) {
     return retstr;
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
   int n,nx,ny,nb;
   CIMAGE cim;
 
@@ -112,13 +111,10 @@ int main(int argc, char *argv[])
   for(int i = 0; i<BINS; i++){
     for(int j = 0; j<BINS; j++){
       for(int k = 0; k<BINS; k++){
-        //printf("%d : %4f ",i*16+j*4+(k+1), hist[i][j][k]);
         fprintf(f,"%d : %4f ",i*16+j*4+(k+1), hist[i][j][k]);
       }
     }
   }
-
-
 
   exit(0);
 }
