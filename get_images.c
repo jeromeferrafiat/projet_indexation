@@ -12,7 +12,6 @@
 static int exec_prog(const char **argv)
 {
     pid_t my_pid;
-    int status, timeout /* unused ifdef WAIT_FOR_COMPLETION */;
 
     if (0 == (my_pid = fork())) {
             if (-1 == execve(argv[0], (char **)argv , NULL)) {
@@ -58,7 +57,7 @@ int main()
   /*------------------------------------------------*/
   while(fgets(buff, 255, (FILE*)fval)!=NULL){
         printf("%s",buff);
-        char *my_argv[64] = {"./read_image" , buff , NULL};
+        const char *my_argv[64] = {"./read_image" , buff , "train/result", NULL};
         exec_prog(my_argv);
   }
 

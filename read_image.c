@@ -53,12 +53,20 @@ int main(int argc, char *argv[]){
   int n,nx,ny,nb;
   CIMAGE cim;
 
+  //function to remove extension
+  //char* res = remove_ext(argv[1], '.', '/');
+
+  if(argc<2) {
+    printf("Not enough argument\n");
+    exit(-1);
+  }
+
   char name[80];
   strcpy(name, "out/");
-  strcat(name, remove_ext(argv[1], '.', '/'));
+  strcat(name, argv[2]);
   strcat(name, "_out");
 
-  FILE *f = fopen(name, "w");
+  FILE *f = fopen(name, "a");
   if (f == NULL){
     printf("Error opening file!\n");
     exit(1);
@@ -107,7 +115,7 @@ int main(int argc, char *argv[]){
   /*------------------------------------------------*/
   /* sauvegarde sous le format libsvm               */
   /*------------------------------------------------*/
-  printf("0 ");
+  fprintf(f,"0 ");
   for(int i = 0; i<BINS; i++){
     for(int j = 0; j<BINS; j++){
       for(int k = 0; k<BINS; k++){
@@ -115,6 +123,7 @@ int main(int argc, char *argv[]){
       }
     }
   }
+  fprintf(f,"\n");
 
   fclose(f);
   free_cimage(argv[1],&cim);

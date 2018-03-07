@@ -10,7 +10,7 @@ get_images.o : get_images.c
 	gcc -o get_images.o -c get_images.c -W -Wall -ansi -pedantic
 
 test :
-	./read_image 2008_000015.jpg
+	./read_image 2008_000015.jpg train_result
 
 clean:
 	rm -rf read_image get_images *.o
