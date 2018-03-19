@@ -56,7 +56,7 @@ int main(int argc, char *argv[]){
   //function to remove extension
   //char* res = remove_ext(argv[1], '.', '/');
 
-  if(argc<2) {
+  if(argc<3) {
     printf("Not enough argument\n");
     exit(-1);
   }
