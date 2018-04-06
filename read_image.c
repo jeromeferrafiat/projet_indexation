@@ -63,7 +63,7 @@ int main(int argc, char *argv[]){
 
   char name[80];
   strcpy(name, "out/");
-  strcat(name, argv[2]);
+  strcat(name, argv[1]);
   strcat(name, "_out");
 
   FILE *f = fopen(name, "a");
