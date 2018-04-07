@@ -66,7 +66,7 @@ int main(int argc, char *argv[]){
   strcat(name, argv[1]);
   strcat(name, "_out");
 
-  FILE *f = fopen(name, "a");
+  FILE *f = fopen(name, "w+");
   if (f == NULL){
     printf("Error opening file!\n");
     exit(1);
@@ -119,7 +119,9 @@ int main(int argc, char *argv[]){
   for(int i = 0; i<BINS; i++){
     for(int j = 0; j<BINS; j++){
       for(int k = 0; k<BINS; k++){
-        fprintf(f,"%d : %4f ",i*16+j*4+(k+1), hist[i][j][k]);
+	if(hist[i][j][k] != 0){
+	  fprintf(f,"%d : %4f ",i*16+j*4+(k+1), hist[i][j][k]);
+	}
       }
     }
   }
