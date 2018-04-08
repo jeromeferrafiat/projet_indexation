@@ -61,9 +61,18 @@ int main(int argc, char *argv[]){
     exit(-1);
   }
 
-  char name[80];
-  strcpy(name, "out/");
-  strcat(name, argv[1]);
+  char name[300];
+  strcpy(name, argv[2]);
+  char imagePath[80];
+  strcpy(imagePath, argv[1]);
+  char *token = strtok(imagePath, "/");
+  char *fileName;
+  while(token != NULL){
+    fileName = token;
+    token = strtok(NULL, "/");
+  }
+  strcat(name, "/");
+  strcat(name, remove_ext(fileName, '.', '/'));
   strcat(name, "_out");
 
   FILE *f = fopen(name, "w+");
