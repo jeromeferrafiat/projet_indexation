@@ -128,8 +128,8 @@ int main(int argc, char *argv[]){
   for(int i = 0; i<BINS; i++){
     for(int j = 0; j<BINS; j++){
       for(int k = 0; k<BINS; k++){
-	if(hist[i][j][k] != 0){
-	  fprintf(f,"%d:%4f ",i*16+j*4+(k+1), hist[i][j][k]);
+	if(hist[k][j][i] != 0){
+	  fprintf(f,"%d:%4f ",i*16+j*4+(k+1), hist[k][j][i]);
 	}
       }
     }
