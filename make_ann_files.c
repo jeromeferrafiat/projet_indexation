@@ -11,8 +11,8 @@ char* replaceFirstChar(char* string, char* replacer){
   for(int i=0; i<strlen(replacer)-1; i++){
     replacedString[i] = replacer[i];
   }
-  for(int i=strlen(replacer)-1; i<strlen(string); i++){
-    replacedString[i] = string[i-(strlen(replacer)-2)];
+  for(int i=1; i<strlen(string); i++){
+    replacedString[i+strlen(replacer)-2] = string[i];
   }
   return replacedString;
 }
@@ -68,6 +68,12 @@ int main(int argc, char *argv[]){
     ann = token;
     token = strtok(NULL, "/");
   }
+
+  char* token2 = strtok(color, "/");
+  while(token2 != NULL){
+    color = token2;
+    token2 = strtok(NULL, "/");
+  }
   char nameOutput[80];
   strcpy(nameOutput, "train/colorAnn/");
   strcat(nameOutput, color);
@@ -95,12 +101,11 @@ int main(int argc, char *argv[]){
   char annLine[128];
   
   while (fgets(colorLine, sizeof(colorLine), colorSVMFile)) {
-    printf("%s", colorLine);
     fgets(annLine, sizeof(annLine), annFile);
     char* token = strtok(annLine, " ");
     token = strtok(NULL, " ");
     char* outputLine = replaceFirstChar(colorLine, token);
-    fprintf(outputFile, "%s\n", outputLine);
+    fprintf(outputFile, "%s", outputLine);
   }
 
   fclose(colorSVMFile);

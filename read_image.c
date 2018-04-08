@@ -9,11 +9,11 @@
 #define BINS 4
 
 int check(float value){
-  float seuil = 255 / BINS;
-  float palier = 0;
-  int done = 0;
-
-  while(done != 1){
+  //float seuil = 255 / BINS;
+  //float palier = 0;
+  //int done = 0;
+  return (value*BINS)/256;
+  /*while(done != 1){
     if(value <= seuil*(palier+1)) {
       done = 1;
     }
@@ -22,7 +22,7 @@ int check(float value){
     }
   }
 
-  return palier;
+  return palier;*/
 }
 
 char *remove_ext (char* mystr, char dot, char sep) {
@@ -129,7 +129,7 @@ int main(int argc, char *argv[]){
     for(int j = 0; j<BINS; j++){
       for(int k = 0; k<BINS; k++){
 	if(hist[i][j][k] != 0){
-	  fprintf(f,"%d : %4f ",i*16+j*4+(k+1), hist[i][j][k]);
+	  fprintf(f,"%d:%4f ",i*16+j*4+(k+1), hist[i][j][k]);
 	}
       }
     }

@@ -8,5 +8,5 @@ liste_fichiers=`ls train/ann/*.ann`
 for fichier in $liste_fichiers
 do
     echo $fichier
-    ./make_ann_files colors.svm "$fichier"
+    ./make_ann_files train/colors.svm "$fichier"
 done
