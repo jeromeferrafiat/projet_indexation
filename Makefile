@@ -25,4 +25,8 @@ clean:
 	rm -rf read_image get_images *.o
 
 cleanout :
-	rm -rf out/*
+	rm -rf out/* colors.svm
+
+cleanall :
+	make clean
+	make cleanout
