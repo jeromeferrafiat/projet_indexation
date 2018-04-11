@@ -1,0 +1,4 @@
+2015-03-18 10:09:52,236 - [Impala.Util.IOBufferFile ] Failed to open images/a.jpg
+2015-03-18 10:09:52,236 - [Sandbox.koen.mainColorDescriptor ] [ERROR] Could not read input file: is it really a valid image?
+2015-03-18 10:10:13,474 - [Impala.CmdOptions ] help
+2015-03-18 10:13:02,464 - [Impala.CmdOptions ] Missing value for --output
